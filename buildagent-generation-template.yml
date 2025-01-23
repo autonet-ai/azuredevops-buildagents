@@ -8,6 +8,7 @@ parameters:
       - windows2022
       - ubuntu2004
       - ubuntu2204
+      - ubuntu2404
   - name: agent_pool
     displayName: Agent Pool
     type: object
@@ -20,7 +21,7 @@ parameters:
   - name: runner_images_version
     displayName: Runner-Images Version
     type: string
-    default: release
+    default: alpha
     values:
       - alpha
       - prerelease
@@ -42,7 +43,7 @@ parameters:
       - vmss
 
 stages:
-  - stage: buildagent_template_vm
+  - stage: buildagent_template_vm_${{ parameters.image_type }}
     displayName: 'Build Agent Template VM'
     ${{ if ne(parameters.depends_on, ' ') }}:
       dependsOn: ${{ parameters.depends_on }}
@@ -84,6 +85,7 @@ stages:
                     'windows2022' { $OSTagPrefix = 'win22' }
                     'ubuntu2004' { $OSTagPrefix = 'ubuntu20' }
                     'ubuntu2204' { $OSTagPrefix = 'ubuntu22' }
+                    'ubuntu2404' { $OSTagPrefix = 'ubuntu24' }
                   }
                   Write-Output "OSTagPrefix = $OSTagPrefix"
 
@@ -110,6 +112,10 @@ stages:
                   Write-Host "##vso[task.setvariable variable=image_readme_name]Ubuntu2204-Readme.md"
                   $image_template_name = "ubuntu-22.04.pkr.hcl"
                 }
+                elseif ("${{ parameters.image_type }}" -eq "ubuntu2404") {
+                  Write-Host "##vso[task.setvariable variable=image_readme_name]Ubuntu2404-Readme.md"
+                  $image_template_name = "ubuntu-24.04.pkr.hcl"
+                }                
                 elseif ("${{ parameters.image_type }}" -eq "windows2019") {
                   Write-Host "##vso[task.setvariable variable=image_readme_name]Windows2019-Readme.md"
                   $image_template_name = "windows-2019.pkr.hcl"
@@ -144,6 +150,13 @@ stages:
                 $GalleryVmImageDefinition = "$ImageType-agentpool-full"
                 Write-Host "##vso[task.setvariable variable=GalleryVmImageDefinition;isOutput=true]$GalleryVmImageDefinition"
                 Write-Host "##vso[task.setvariable variable=ManagedImageNameOutput;isOutput=true]$ManagedImageName"
+
+                $StorageAccountType = "Standard_LRS"
+                try {
+                  $StorageAccountType = "$(GALLERY_STORAGE_ACCOUNT_TYPE)"
+                } catch {
+                }
+                Write-Host "##vso[task.setvariable variable=GalleryStorageAccountType;isOutput=true]$StorageAccountType"
                 
           - task: PowerShell@2
             displayName: 'Workaround for issue: https://github.com/actions/runner-images/discussions/6251'
@@ -243,22 +256,23 @@ stages:
                 -ClientSecret $(CLIENT_SECRET) `
                 -TenantId $(AZURE_TENANT)
 
-  - stage: create_gallery_imagevm
+  - stage: create_gallery_imagevm_${{ parameters.image_type }}
     displayName: 'Create Gallery Image Version VM'
     condition: and(succeeded(), eq('${{ parameters.update_type }}', 'galleryvm'))
     dependsOn:
-      - buildagent_template_vm
+      - buildagent_template_vm_${{ parameters.image_type }}
     jobs:
       - template: buildagent-generation-galleryvm.yml
         parameters:
           variable_group_name: ${{ parameters.variable_group_name }}
           agent_pool: ${{ parameters.agent_pool }}
           repository_base_path: ${{ parameters.repository_base_path }}
+          build_stage_job_name: buildagent_template_vm_${{ parameters.image_type }}
 
-  - stage: update_vmss_imagevm
+  - stage: update_vmss_imagevm_${{ parameters.image_type }}
     displayName: 'Update VM Scale Set to new Image'
     dependsOn:
-      - buildagent_template_vm
+      - buildagent_template_vm_${{ parameters.image_type }}
     condition: and(succeeded(), eq('${{ parameters.update_type }}', 'vmss'))
     variables:
       - ${{ if eq(parameters.image_type, 'windows2019') }}:
@@ -273,6 +287,9 @@ stages:
       - ${{ if eq(parameters.image_type, 'ubuntu2204') }}:
           - name: VmssNames
             value: $[variables.VMSS_Ubuntu2204]
+      - ${{ if eq(parameters.image_type, 'ubuntu2404') }}:
+          - name: VmssNames
+            value: $[variables.VMSS_Ubuntu2404]            
     jobs:
       - template: buildagent-generation-update-vmss.yml
         parameters:
@@ -280,3 +297,5 @@ stages:
           agent_pool: ${{ parameters.agent_pool }}
           repository_base_path: ${{ parameters.repository_base_path }}
           vmss_names: $(VmssNames)
+          build_stage_job_name: buildagent_template_vm_${{ parameters.image_type }}
+

@@ -20,6 +20,7 @@ The pipeline requires Azure resources for the temporary building of the VM image
 Create (if you don´t have one) an Azure Compute Gallery in your Azure subscription, and create the following VM Image Definitions:
 - ubuntu2004-agentpool-full (OS: Linux)
 - ubuntu2204-agentpool-full (OS: Linux)
+- ubuntu2404-agentpool-full (OS: Linux)
 - windows2019-agentpool-full (OS: Windows)
 - windows2022-agentpool-full (OS: Windows)  
 
@@ -79,10 +80,12 @@ Create a Variable Group in the Azure DevOps project running the pipeline, and gi
 | RUN_VALIDATION_FLAG | Wether or not to run a validation on diskspace. Set the value to `false` unless you know what you are doing ;) |
 | GALLERY_NAME | (required for option galleryvm) Name of the Azure Compute Gallery to store images for Agent Pool VM Scale Sets.|
 | GALLERY_RESOURCE_GROUP| (required for option galleryvm) Name of the resource group containing the Azure Compute Gallery.| 
+| GALLERY_STORAGE_ACCOUNT_TYPE | (required for option galleryvm) Storage account type used to storage Gallery Image Versions. Accepted values: Standard_LRS, Premium_LRS, Standard_ZRS| 
 | VMSS_Windows2019 | (required for option vmss) Name of the Azure Virtual Machine Scale Set that will run Build Agents on Windows Server 2019. Support comma seperated list of names. |
 | VMSS_Windows2022 | (required for option vmss) Name of the Azure Virtual Machine Scale Set that will run Build Agents on Windows Server 2022. Support comma seperated list of names.|
 | VMSS_Ubuntu2004 | (required for option vmss) Name of the Azure Virtual Machine Scale Set that will run Build Agents on Ubuntu 20.04. Support comma seperated list of names. |
 | VMSS_Ubuntu2204 | (required for option vmss) Name of the Azure Virtual Machine Scale Set that will run Build Agents on Ubuntu 22.04. Support comma seperated list of names. |
+| VMSS_Ubuntu2404 | (required for option vmss) Name of the Azure Virtual Machine Scale Set that will run Build Agents on Ubuntu 24.04. Support comma seperated list of names. |
 
 ## Pipeline runtime parameters
 ### Build Agent Generation
